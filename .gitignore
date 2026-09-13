@@ -14,3 +14,5 @@ dist/
 *.pem
 .DS_Store
 CLAUDE.local.md
+__pycache__/
+*.py[cod]

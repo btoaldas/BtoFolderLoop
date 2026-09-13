@@ -11,6 +11,6 @@ let package = Package(
         .target(name: "BtoFolderLoopStorage", dependencies: ["BtoFolderLoopCore", "CSQLite"], resources: [.process("Resources")]),
         .target(name: "BtoFolderLoopMac", dependencies: ["BtoFolderLoopCore"]),
         .executableTarget(name: "BtoFolderLoopApp", dependencies: ["BtoFolderLoopCore", "BtoFolderLoopStorage", "BtoFolderLoopMac"], resources: [.process("Resources")]),
-        .testTarget(name: "BtoFolderLoopTests", dependencies: ["BtoFolderLoopCore", "BtoFolderLoopStorage", "BtoFolderLoopMac"])
+        .testTarget(name: "BtoFolderLoopTests", dependencies: ["BtoFolderLoopCore", "BtoFolderLoopStorage", "BtoFolderLoopMac", "BtoFolderLoopApp", "CSQLite"])
     ]
 )

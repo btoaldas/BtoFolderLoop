@@ -17,7 +17,9 @@ struct ContentView: View {
                 }
                 Spacer()
                 Button { model.openHistory() } label: { Label("Registro", systemImage: "clock.arrow.circlepath") }
-                    .disabled(model.busy).accessibilityIdentifier("historyButton")
+                    .accessibilityIdentifier("historyButton")
+                Button { model.openSettings() } label: { Image(systemName: "gearshape") }
+                    .disabled(model.busy).help("Configuración de registros").accessibilityIdentifier("settingsButton")
             }
             dropZone
             HStack(alignment: .top, spacing: 12) {
@@ -33,6 +35,7 @@ struct ContentView: View {
                 Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
+            if let warning = model.diagnosticWarning { Text(warning).font(.caption).foregroundStyle(.orange) }
             if let plan = model.plan { preview(plan) }
             else if let report = model.report { result(report) }
             else if !model.busy { welcome }
@@ -50,6 +53,8 @@ struct ContentView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $model.showConfirmation, onDismiss: model.cancelApproval) { ApprovalView(model: model) }
         .sheet(isPresented: $model.showHistory) { HistoryView(model: model) }
+        .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
+        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in model.maintainIfIdle() }
     }
 
     private var dropZone: some View {
@@ -178,22 +183,5 @@ struct ContentView: View {
             Label("3. Comprueba el resultado", systemImage: "checkmark.shield").font(.headline)
             Text("Cada movimiento se verifica y se registra solo en este Mac.")
         }.foregroundStyle(.secondary).padding(18)
-    }
-}
-
-private struct HistoryView: View {
-    @ObservedObject var model: AppModel
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack { BrandIcon(size: 32); Text("Registro local").font(.title2.bold()); Spacer(); Button("Cerrar") { model.showHistory = false } }
-            Text("El registro puede contener rutas privadas. Permanece en este Mac; no se envía a GitHub ni a ningún servidor.").foregroundStyle(.secondary)
-            List(model.history) { run in
-                HStack { Text(run.date); Text(CleanupMode(rawValue: run.mode)?.title ?? run.mode); Spacer(); Text("\(run.moved) enviadas · \(run.status)") }
-            }.frame(height: 150)
-            Text("Últimos 500 eventos · fecha / origen / estado / destino / detalle").font(.caption)
-            ScrollView([.horizontal, .vertical]) { Text(model.journalText.isEmpty ? "Todavía no hay operaciones." : model.journalText).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }
-                .frame(height: 210)
-            Button("Mostrar base local en Finder", action: model.revealDatabase)
-        }.padding(24).frame(width: 820, height: 530)
     }
 }

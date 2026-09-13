@@ -4,7 +4,7 @@
 
 **Arrastra una carpeta, marca las carpetas vacías que quieras y aprueba su envío a la Papelera.**
 
-Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. Funciona localmente: sin cuentas, servidores, telemetría ni dependencias de terceros. Versión **0.2.0 (preview)**. Interfaz en español.
+Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. Funciona localmente: sin cuentas, servidores, telemetría ni dependencias de terceros. Última publicación: **0.2.0 (preview)**. Este código prepara **0.3.0**, con historial y retención; todavía no está publicado como release. Interfaz en español.
 
 ## Los dos modos
 
@@ -84,7 +84,24 @@ SQLite guarda el modo elegido y la bitácora de movimientos en:
 ~/Library/Application Support/BtoFolderLoop/settings.sqlite
 ```
 
-Cada movimiento tiene un evento previo y un resultado. El registro incluye las rutas originales y los destinos de la Papelera; puede contener nombres privados, permanece local y no se sube a GitHub. Se conserva para facilitar la revisión y recuperación. Puedes localizarlo con **Registro → Mostrar base local en Finder**.
+Cada movimiento tiene un evento previo y un resultado. El registro incluye las rutas originales y los destinos de la Papelera; puede contener nombres privados, permanece local y no se sube a GitHub. Puedes localizarlo con **Registro → Mostrar base local**.
+
+En el código 0.3.0, **Registro** permite consultar operaciones y carpetas trabajadas, con fecha local, modo, cantidades enviadas/conservadas, errores y última actividad. El contador se guarda durante la ejecución. El detalle muestra 200 eventos por página y permite consultar los anteriores; no limita lo que se guarda. Las listas de operaciones y carpetas muestran las 200 más recientes. «Sin cierre registrado» no significa necesariamente que una operación siga ejecutándose.
+
+**Configuración** (engranaje o `⌘,`) permite cambiar estos valores iniciales:
+
+| Registro | Conservación inicial | Límite |
+|---|---|---|
+| Diagnóstico técnico JSONL | 30 días | 10 MiB en total; segmentos de hasta 2 MiB, rotados también al cambiar de día |
+| Historial de operaciones completadas | 180 días desde el cierre | Los registros pendientes, detenidos, con errores o inconsistencias se conservan |
+
+Los archivos de diagnóstico viven en `Diagnostics`, junto a la base. Sus mensajes estructurados contienen fecha, nivel, tipo de evento, identificador de operación y contador; no contienen las rutas privadas ni mensajes de error sin filtrar. Se registra progreso resumido cada diez segundos como máximo, sin duplicar cada movimiento en texto.
+
+Los plazos aceptan de 1 a 3650 días; el presupuesto de diagnóstico, de 1 a 100 MiB. **Guardar y aplicar** acepta la caducidad de registros existentes: al vencer un historial completado también caducan sus rutas de recuperación. Esto no toca las carpetas trabajadas ni vacía la Papelera. El historial se depura mientras la app está abierta e inactiva, como máximo una vez al día; los diagnósticos rotan al escribir. SQLite reutiliza el espacio liberado; su archivo no se reduce inmediatamente y el límite de diagnóstico no limita el historial protegido.
+
+Antes de actualizar una base del esquema anterior se crea un respaldo SQLite `pre-schema-2-<identificador>.sqlite` en la misma carpeta. Ese respaldo no caduca automáticamente. No abras simultáneamente versiones distintas sobre la misma base ni actualices la app durante una limpieza. Volver a una versión anterior requiere revisar el respaldo y cualquier operación posterior; no hay restauración automática.
+
+Para observar una ejecución desde terminal sin detenerla ni modificar su base, consulta [el procedimiento de solo lectura](docs/runbooks/observe-run.md).
 
 La app nunca vacía la Papelera. Puedes recuperar las carpetas mientras sigan allí. Para una estructura anidada, devuelve primero los padres a rutas libres y luego los hijos; no sobrescribas destinos existentes. Si otra aplicación modifica el árbol o vacía la Papelera, la disponibilidad de recuperación cambia. Más detalles en [SECURITY.md](SECURITY.md).
 

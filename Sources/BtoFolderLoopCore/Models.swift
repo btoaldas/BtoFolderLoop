@@ -90,8 +90,27 @@ public struct RunSummary: Identifiable, Sendable {
     public let mode: String
     public let status: String
     public let moved: Int
-    public init(id: String, date: String, mode: String, status: String, moved: Int) {
+    public let root: String
+    public let planned: Int
+    public let skipped: Int
+    public let errors: Int
+    public let updatedAt: String
+    public let finishedAt: String
+    public init(id: String, date: String, mode: String, status: String, moved: Int,
+                root: String = "", planned: Int = 0, skipped: Int = 0, errors: Int = 0,
+                updatedAt: String = "", finishedAt: String = "") {
         self.id = id; self.date = date; self.mode = mode; self.status = status; self.moved = moved
+        self.root = root; self.planned = planned; self.skipped = skipped; self.errors = errors
+        self.updatedAt = updatedAt; self.finishedAt = finishedAt
+    }
+    public var statusTitle: String {
+        switch status {
+        case "running": return "Sin cierre registrado"
+        case "completed": return "Completada"
+        case "cancelled": return "Detenida por ti"
+        case "stopped": return "Detenida por un error"
+        default: return status
+        }
     }
 }
 

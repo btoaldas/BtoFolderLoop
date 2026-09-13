@@ -32,6 +32,9 @@ struct BtoFolderLoopApp: App {
         }
         .defaultSize(width: 930, height: 820)
         .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Configuración…", action: model.openSettings).keyboardShortcut(",").disabled(model.busy)
+            }
             CommandGroup(replacing: .newItem) { Button("Elegir carpeta…", action: model.choose).keyboardShortcut("o").disabled(model.busy) }
             CommandGroup(replacing: .appInfo) {
                 Button("Acerca de BtoFolderLoop") {

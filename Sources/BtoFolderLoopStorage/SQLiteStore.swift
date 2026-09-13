@@ -5,8 +5,8 @@ import BtoFolderLoopCore
 
 public final class SQLiteStore: OperationJournal, PreferencesStore, @unchecked Sendable {
     public let location: URL
-    private var db: OpaquePointer?
-    private let lock = NSRecursiveLock()
+    var db: OpaquePointer?
+    let lock = NSRecursiveLock()
     private let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
     public init(location: URL) throws {
@@ -23,9 +23,10 @@ public final class SQLiteStore: OperationJournal, PreferencesStore, @unchecked S
             sqlite3_busy_timeout(db, 5000)
             try executeSQL("PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL; PRAGMA journal_mode=DELETE;")
             let version = Int(try rows("PRAGMA user_version").first?.first ?? "0") ?? 0
-            guard version <= 1 else { throw CleanupError.filesystem("La base pertenece a una versión más nueva de la app.") }
-            if version == 0 {
-                guard let url = Self.migrationURL() else { throw CleanupError.filesystem("No se encontró la migración de la base dentro de la aplicación.") }
+            guard version <= 2 else { throw CleanupError.filesystem("La base pertenece a una versión más nueva de la app.") }
+            if version == 1 { try backupBeforeMigration() }
+            for next in (version + 1)..<3 {
+                guard let url = Self.migrationURL(next) else { throw CleanupError.filesystem("No se encontró la migración de la base dentro de la aplicación.") }
                 try executeSQL("BEGIN IMMEDIATE;")
                 do { try executeSQL(String(contentsOf: url)); try executeSQL("COMMIT;") }
                 catch { try? executeSQL("ROLLBACK;"); throw error }
@@ -36,7 +37,7 @@ public final class SQLiteStore: OperationJournal, PreferencesStore, @unchecked S
     deinit { if let db { sqlite3_close(db) } }
 
     // Avoid SwiftPM's generated absolute build-directory fallback in a distributed app.
-    private static func migrationURL() -> URL? {
+    private static func migrationURL(_ version: Int) -> URL? {
         let name = "BtoFolderLoop_BtoFolderLoopStorage.bundle"
         let own = Bundle(for: SQLiteStore.self)
         var locations = [Bundle.main.resourceURL, Bundle.main.bundleURL, own.resourceURL,
@@ -46,7 +47,7 @@ public final class SQLiteStore: OperationJournal, PreferencesStore, @unchecked S
         }
         for location in locations {
             if let bundle = Bundle(url: location.appendingPathComponent(name)),
-               let migration = bundle.url(forResource: "001_initial", withExtension: "sql") { return migration }
+               let migration = bundle.url(forResource: version == 1 ? "001_initial" : "002_history", withExtension: "sql") { return migration }
         }
         return nil
     }
@@ -54,10 +55,10 @@ public final class SQLiteStore: OperationJournal, PreferencesStore, @unchecked S
     private func failure() -> Error {
         CleanupError.filesystem("Error en el registro local: \(db.map { String(cString: sqlite3_errmsg($0)) } ?? "base cerrada")")
     }
-    private func executeSQL(_ sql: String) throws {
+    func executeSQL(_ sql: String) throws {
         guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw failure() }
     }
-    private func rows(_ sql: String, values: [String?] = []) throws -> [[String]] {
+    func rows(_ sql: String, values: [String?] = []) throws -> [[String]] {
         lock.lock(); defer { lock.unlock() }
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { throw failure() }
@@ -87,8 +88,9 @@ public final class SQLiteStore: OperationJournal, PreferencesStore, @unchecked S
         _ = try rows("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", values: ["cleanup_mode", mode.rawValue])
     }
     public func begin(_ plan: CleanupPlan) throws {
-        _ = try rows("INSERT INTO runs(id,started_at,root_path,mode,status,planned) VALUES(?,?,?,?,?,?)",
-                     values: [plan.id.uuidString, ISO8601DateFormatter().string(from: Date()), plan.root.path, plan.mode.rawValue, "running", String(plan.candidates.count)])
+        let now = ISO8601DateFormatter().string(from: Date())
+        _ = try rows("INSERT INTO runs(id,started_at,root_path,mode,status,planned,updated_at) VALUES(?,?,?,?,?,?,?)",
+                     values: [plan.id.uuidString, now, plan.root.path, plan.mode.rawValue, "running", String(plan.candidates.count), now])
     }
     public func record(run: UUID, path: String, phase: String, destination: String?, detail: String?) throws {
         _ = try rows("INSERT INTO events(run_id,recorded_at,source_path,phase,destination_path,detail) VALUES(?,?,?,?,?,?)",
@@ -96,11 +98,15 @@ public final class SQLiteStore: OperationJournal, PreferencesStore, @unchecked S
     }
     public func finish(_ report: CleanupReport) throws {
         let status = report.cancelled ? "cancelled" : (report.errors.isEmpty ? "completed" : "stopped")
-        _ = try rows("UPDATE runs SET status=?,moved=? WHERE id=?", values: [status, String(report.moved.count), report.runID.uuidString])
+        let now = ISO8601DateFormatter().string(from: Date())
+        _ = try rows("UPDATE runs SET status=?,moved=?,skipped=?,errors=?,finished_at=?,updated_at=? WHERE id=?",
+                     values: [status, String(report.moved.count), String(report.skipped.count), String(report.errors.count), now, now, report.runID.uuidString])
     }
     public func recentRuns() throws -> [RunSummary] {
-        try rows("SELECT id,started_at,mode,status,moved FROM runs ORDER BY started_at DESC LIMIT 30").map {
-            RunSummary(id: $0[0], date: $0[1], mode: $0[2], status: $0[3], moved: Int($0[4]) ?? 0)
+        try rows("SELECT id,started_at,mode,status,moved,root_path,planned,skipped,errors,updated_at,finished_at FROM runs ORDER BY updated_at DESC,id DESC LIMIT 200").map {
+            RunSummary(id: $0[0], date: $0[1], mode: $0[2], status: $0[3], moved: Int($0[4]) ?? 0,
+                       root: $0[5], planned: Int($0[6]) ?? 0, skipped: Int($0[7]) ?? 0, errors: Int($0[8]) ?? 0,
+                       updatedAt: $0[9], finishedAt: $0[10])
         }
     }
     public func journalText() throws -> String {

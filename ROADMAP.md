@@ -3,7 +3,9 @@
 Updated: 2026-09-13. Status: v0.2.0 selection and identity preview published; download and application resources verified. Level P (public preview, synthetic validation); actual user files are safety-critical and receive strict no-file-loss checks. General availability requires the signed distribution and broader OS/provider validation listed below.
 
 ## Now
-Collect feedback on [v0.2.0](https://github.com/btoaldas/BtoFolderLoop/releases/tag/v0.2.0): default-off individual selection, complete subset confirmation, and original icon in native resources and UI. The [public milestone](docs/hitos/2026-09-13-v0.2.0-public.md) records tests and package verification. v0.1.0 and existing SQLite data remain available.
+Prepare v0.3.0 locally: live durable counters, worked-on folder history, per-run event pagination, typed rotating diagnostics and configurable retention. See [scope and safeguards](docs/specs/003-history-retention.md). Observe an ongoing v0.2.0 cleanup read-only; never install/restart or migrate its active database during this work. New publication and installation are not part of this stage.
+
+The latest public release remains [v0.2.0](https://github.com/btoaldas/BtoFolderLoop/releases/tag/v0.2.0), with default-off selection and the original icon. Its [public milestone](docs/hitos/2026-09-13-v0.2.0-public.md) records package verification; v0.1.0 stays available.
 
 ## Next
 Signed/notarized distribution, compatibility testing across macOS/cloud providers and cross-application drag-and-drop. Candidate improvements: hierarchical preview, explicit persistent exclusions and guided restoration from recorded Trash destinations while available. These ideas are not active implementation scope. Incremental features keep separate strategies and never silently expand approval.

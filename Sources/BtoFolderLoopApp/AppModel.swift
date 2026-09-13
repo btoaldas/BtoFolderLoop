@@ -14,25 +14,40 @@ final class AppModel: ObservableObject {
     @Published private(set) var pendingApproval: CleanupPlan?
     @Published var report: CleanupReport?
     @Published var busy = false
+    @Published var activeRunID: String?
     @Published var status = "Elige una carpeta para empezar."
     @Published var error: String?
     @Published var history: [RunSummary] = []
-    @Published var journalText = ""
+    @Published var folders: [FolderHistory] = []
+    @Published var historyEvents: [JournalEvent] = []
+    @Published var historyRunID: String?
+    @Published var hasOlderEvents = false
+    @Published var showSettings = false
+    @Published var retention = RetentionPolicy()
+    @Published var settingsDraft = RetentionPolicy()
+    @Published var diagnosticWarning: String?
     @Published var showHistory = false
     @Published var showConfirmation = false
     private var token = CancellationToken()
     private let fileSystem = NativeFileSystem()
     private(set) var store: SQLiteStore?
+    var diagnostics: DiagnosticLog?
+    var lastMaintenance = Date.distantPast
 
-    init() {
+    init(storageDirectory: URL? = nil) {
         do {
             let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             // The test override is used only for synthetic UI smoke tests; no fixtures ship with the app.
-            let base = ProcessInfo.processInfo.environment["BTOFOLDERLOOP_TEST_DATA"].map { URL(fileURLWithPath: $0) }
+            let base = storageDirectory ?? ProcessInfo.processInfo.environment["BTOFOLDERLOOP_TEST_DATA"].map { URL(fileURLWithPath: $0) }
                 ?? support.appendingPathComponent("BtoFolderLoop", isDirectory: true)
             let store = try SQLiteStore(location: base.appendingPathComponent("settings.sqlite"))
             self.store = store
             mode = try store.loadMode()
+            retention = try store.loadRetention(); settingsDraft = retention
+            do { diagnostics = try DiagnosticLog(directory: base.appendingPathComponent("Diagnostics"), policy: retention) }
+            catch { diagnosticWarning = "El diagnóstico no está disponible. El registro de movimientos se mantiene separado." }
+            log(.applicationOpened)
+            maintainIfIdle()
         } catch { self.error = error.localizedDescription }
     }
 
@@ -67,6 +82,7 @@ final class AppModel: ObservableObject {
         plan = nil; report = nil; error = nil; busy = true
         token = CancellationToken()
         status = "Leyendo carpetas… No se está moviendo nada."
+        log(.scanStarted)
         let selectedMode = mode, cancellation = token, fs = fileSystem
         Task {
             do {
@@ -76,14 +92,17 @@ final class AppModel: ObservableObject {
                     }
                 }.value
                 plan = result
+                log(.scanCompleted, count: result.scannedDirectories)
                 selection = CandidateSelection(plan: result)
                 status = result.candidates.isEmpty ? "No se encontraron carpetas vacías que se puedan retirar."
                     : "Marca las carpetas que quieras enviar. Todas empiezan desmarcadas."
             } catch {
+                log(.scanStopped)
                 if cancellation.isCancelled { status = "Análisis cancelado. No se movió nada." }
                 else { self.error = error.localizedDescription; status = "No se pudo completar el análisis." }
             }
             busy = false
+            maintainIfIdle()
         }
     }
 
@@ -115,20 +134,25 @@ final class AppModel: ObservableObject {
         self.plan = nil // Consume the approval once; cannot run the same plan twice from the UI.
         resetSelection()
         busy = true; error = nil; token = CancellationToken()
+        activeRunID = plan.id.uuidString
         status = "Comprobando y enviando carpetas vacías a la Papelera…"
         let cancellation = token, fs = fileSystem
+        let journal = ObservedJournal(store: store, log: diagnostics) { [weak self] in
+            Task { @MainActor in self?.diagnosticWarning = "No se pudo escribir el diagnóstico. Consulta el registro de movimientos." }
+        }
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) {
-                    try CleanupExecutor(fileSystem: fs, journal: store).execute(plan, cancellation: cancellation) { done, total in
+                    try CleanupExecutor(fileSystem: fs, journal: journal).execute(plan, cancellation: cancellation) { done, total in
                         Task { @MainActor [weak self] in self?.status = "\(done.formatted()) de \(total.formatted()) carpetas comprobadas…" }
                     }
                 }.value
                 report = result
                 status = result.cancelled ? "Detenido por ti. Los movimientos realizados están registrados."
                     : (result.errors.isEmpty ? "Proceso terminado." : "Proceso detenido. Revisa el detalle antes de continuar.")
-            } catch { self.error = error.localizedDescription; status = "Proceso detenido." }
-            busy = false
+            } catch { log(.cleanupStopped); self.error = error.localizedDescription; status = "Proceso detenido." }
+            activeRunID = nil; busy = false
+            maintainIfIdle()
         }
     }
 
@@ -136,8 +160,7 @@ final class AppModel: ObservableObject {
 
     func openHistory() {
         do {
-            history = try store?.recentRuns() ?? []
-            journalText = try store?.journalText() ?? ""
+            try refreshHistory()
             showHistory = true
         } catch { self.error = error.localizedDescription }
     }
