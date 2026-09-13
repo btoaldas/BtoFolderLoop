@@ -8,4 +8,6 @@
 - [x] Unit/integration tests and opt-in native Trash test.
 - [x] Final UI end-to-end and reopened preference verification.
 - [x] Packaged binary privacy check and relocatable resources verified.
-- [ ] Public repository destination confirmed, published and independently verified.
+- [x] Public repository destination confirmed, published and independently verified.
+- [x] Preview release published with checksum and source-commit metadata.
+- [x] Downloaded package checked and exercised through cancellation, both modes, journal and reopened settings.
