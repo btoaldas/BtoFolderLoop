@@ -1,4 +1,4 @@
-# FolderLoop
+# BtoFolderLoop
 
 Open-source native macOS utility. GPL-3.0-or-later. Initial release: preview.
 
@@ -6,7 +6,7 @@ Open-source native macOS utility. GPL-3.0-or-later. Initial release: preview.
 Choose or drop one directory, inspect a complete preview, explicitly approve moving only empty subdirectories to macOS Trash. Single-pass considers only initially empty leaves. Cascade includes approved ancestors that become empty. Never remove the selected root, files, symbolic links, packages, unreadable entries, or anything not in the approved plan. Never empty Trash. New or changed contents invalidate eligibility.
 
 ## Structure and commands
-Swift Package targets: FolderLoopCore (models/planner/executor and ports), FolderLoopMac (native filesystem), FolderLoopStorage (SQLite), FolderLoopApp (SwiftUI). No third-party dependencies or network API.
+Swift Package targets: BtoFolderLoopCore (models/planner/executor and ports), BtoFolderLoopMac (native filesystem), BtoFolderLoopStorage (SQLite), BtoFolderLoopApp (SwiftUI). No third-party dependencies or network API.
 `swift test`; `bash scripts/build-app.sh`; `python3 scripts/check-public.py`.
 
 ## Authority and safety

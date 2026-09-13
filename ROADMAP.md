@@ -1,9 +1,9 @@
 # Roadmap
 
-Updated: 2026-09-13. Status: development. Level P (public preview, synthetic validation); actual user files are safety-critical and receive strict no-file-loss checks. General availability requires the signed distribution and broader OS/provider validation listed below.
+Updated: 2026-09-13. Status: v0.1.0 verified locally; publication destination confirmation pending. Level P (public preview, synthetic validation); actual user files are safety-critical and receive strict no-file-loss checks. General availability requires the signed distribution and broader OS/provider validation listed below.
 
 ## Now
-Complete v0.1.0: two modes, reviewed plan, native Trash, SQLite, accessible interface, tests, installation guide and public source publication.
+Confirm the public repository owner/name and publish the reviewed v0.1.0 source. Both modes, reviewed plans, native Trash, SQLite persistence, UI flow, 23 tests, package and installation guide are complete locally.
 
 ## Next
 Signed/notarized distribution and compatibility testing across supported macOS releases/cloud providers. Incremental features through separate operation strategies, never silent expansion of cleanup scope.

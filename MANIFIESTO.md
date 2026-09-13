@@ -1,4 +1,4 @@
-# FolderLoop
+# BtoFolderLoop
 
 A small local utility to make empty-directory cleanup understandable and reviewable.
 
