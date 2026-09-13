@@ -9,7 +9,8 @@ public struct CleanupExecutor {
     /// Caller must present the immutable plan and obtain explicit approval before invoking this method.
     public func execute(_ plan: CleanupPlan, cancellation: CancellationToken = .init(),
                         progress: (Int, Int) -> Void = { _, _ in }) throws -> CleanupReport {
-        guard plan.candidates.allSatisfy({ $0.path != plan.root.path && $0.path.hasPrefix(plan.root.path + "/") }),
+        guard !plan.candidates.isEmpty,
+              plan.candidates.allSatisfy({ $0.path != plan.root.path && $0.path.hasPrefix(plan.root.path + "/") }),
               Set(plan.candidates.map(\.path)).count == plan.candidates.count else { throw CleanupError.invalidPlan }
         let root = try fs.inspect(plan.root.path)
         guard root.kind == .directory && root.identity == plan.root.identity else { throw CleanupError.changed(plan.root.path) }

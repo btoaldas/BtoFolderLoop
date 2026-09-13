@@ -1,8 +1,10 @@
 # BtoFolderLoop
 
-**Arrastra una carpeta, revisa la lista de carpetas vacías y aprueba su envío a la Papelera.**
+<img src="Sources/BtoFolderLoopApp/Resources/BrandIcon.png" alt="Icono de BtoFolderLoop: carpeta y recorrido circular" width="112" height="112">
 
-Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. Funciona localmente: sin cuentas, servidores, telemetría ni dependencias de terceros. Versión inicial **0.1.0 (preview)**. Interfaz en español.
+**Arrastra una carpeta, marca las carpetas vacías que quieras y aprueba su envío a la Papelera.**
+
+Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. Funciona localmente: sin cuentas, servidores, telemetría ni dependencias de terceros. Versión **0.2.0 (preview)**. Interfaz en español.
 
 ## Los dos modos
 
@@ -13,14 +15,18 @@ Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-l
 
 Por ejemplo, si `A/B/C` no contiene archivos, **una pasada** retira `C`. **En bucle** puede retirar `C`, después `B` y finalmente `A`. La carpeta principal que elegiste siempre se conserva.
 
-**La vista previa no mueve nada.** La lista muestra tanto las carpetas vacías ahora como las que quedarían vacías después de retirar sus hijas. El filtro solo ayuda a buscar en la lista: no cambia el conjunto que se aprobará. Esta versión aprueba la lista completa; la selección individual es una mejora futura.
+**Todo empieza desmarcado y la vista previa no mueve nada.** Marca cada carpeta que quieras enviar, usa **Seleccionar todas** o **Deseleccionar todas**. Cada nuevo análisis, cambio de carpeta o cambio de modo vuelve a dejar la selección vacía.
+
+En bucle, marcar un padre **no marca sus hijas**. Si una hija desmarcada permanece dentro, el padre se conserva. Solo se comprueba el subconjunto elegido, en el orden seguro de abajo hacia arriba.
+
+El filtro solo oculta filas; no cambia las casillas. **Seleccionar todas** incluye todas las candidatas del análisis, incluso las ocultas por el filtro. El contador siempre muestra el total marcado y la confirmación final enseña la lista completa de seleccionadas.
 
 ## Uso
 
 1. Arrastra una carpeta a la ventana o pulsa **Elegir carpeta…**.
 2. Elige **Una pasada** o **En bucle**. Cambiar de modo genera una nueva vista previa.
-3. Revisa el listado y cualquier ruta que no se haya podido leer.
-4. Pulsa **Revisar y enviar…** y confirma el envío a la Papelera.
+3. Revisa el listado y marca las carpetas que quieras enviar. Las rutas que no se puedan leer se conservan.
+4. Pulsa **Revisar seleccionadas…**, comprueba la lista final y confirma el envío a la Papelera. Con cero seleccionadas, el botón queda desactivado.
 5. Comprueba el resultado y el **Registro**. Puedes detener el proceso antes del siguiente movimiento.
 
 Un archivo oculto también cuenta como archivo: una carpeta con `.DS_Store` **no está vacía**. Se conservan archivos, enlaces, paquetes de aplicaciones, bibliotecas de fotos, directorios protegidos y destinos de enlaces encontrados en el árbol. No se buscan referencias fuera de la carpeta seleccionada.
@@ -68,7 +74,7 @@ BTOFOLDERLOOP_NATIVE_TRASH_TEST=1 swift test \
   --filter StorageAndNativeTests/testNativeSingleAndCascadeTrashWithOriginalFilePreserved
 ```
 
-Esa prueba deja tres carpetas vacías de ejemplo en la Papelera. No la vacía. Las demás pruebas conservan sus datos artificiales dentro de `.tmp/`, excluido de Git.
+Esa prueba deja tres carpetas vacías de ejemplo en la Papelera. No la vacía. Para ejecutar también la comprobación nativa de selección parcial usa `BTOFOLDERLOOP_NATIVE_TRASH_TEST=1 swift test`: la suite completa deja cuatro carpetas vacías artificiales en la Papelera. Las demás pruebas conservan sus datos artificiales dentro de `.tmp/`, excluido de Git.
 
 ## Configuración, registro y privacidad
 
@@ -91,7 +97,9 @@ La app nunca vacía la Papelera. Puedes recuperar las carpetas mientras sigan al
 | `BtoFolderLoopStorage` | SQLite, migraciones, preferencias y registro duradero. |
 | `BtoFolderLoopApp` | Ventana, arrastrar y soltar, lista, confirmación y resultados. |
 
-La interfaz no ejecuta SQL ni implementa las reglas de limpieza. El núcleo no depende de SwiftUI ni SQLite. Se distribuye como una sola app con módulos separados. [Arquitectura](docs/adr/001-native-modules.md) · [Requisitos](docs/specs/001-empty-folders/spec.md) · [Roadmap](ROADMAP.md) · [Contribuir](CONTRIBUTING.md).
+La interfaz no ejecuta SQL ni implementa las reglas de limpieza. El núcleo no depende de SwiftUI ni SQLite. Se distribuye como una sola app con módulos separados. [Arquitectura](docs/adr/001-native-modules.md) · [Requisitos](docs/specs/001-empty-folders/spec.md) · [Selección segura](docs/specs/002-selection-brand.md) · [Roadmap](ROADMAP.md) · [Contribuir](CONTRIBUTING.md).
+
+El mismo [icono original](docs/brand/README.md) aparece en el paquete de la aplicación, Dock, ventana, confirmación, registro y Acerca de. Se generó con IA y se exporta a tamaños nativos de macOS durante la compilación.
 
 ## Estado y límites
 

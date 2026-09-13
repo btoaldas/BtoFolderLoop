@@ -7,6 +7,7 @@ extension Notification.Name { static let openFolder = Notification.Name("BtoFold
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.regular)
+        if let icon = BrandAssets.icon { NSApplication.shared.applicationIconImage = icon }
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
@@ -32,7 +33,16 @@ struct BtoFolderLoopApp: App {
         .defaultSize(width: 930, height: 820)
         .commands {
             CommandGroup(replacing: .newItem) { Button("Elegir carpeta…", action: model.choose).keyboardShortcut("o").disabled(model.busy) }
-            CommandGroup(after: .appInfo) { Text("GPL-3.0-or-later · v0.1.0") }
+            CommandGroup(replacing: .appInfo) {
+                Button("Acerca de BtoFolderLoop") {
+                    var options: [NSApplication.AboutPanelOptionKey: Any] = [
+                        .applicationName: "BtoFolderLoop", .applicationVersion: BrandAssets.version,
+                        .credits: NSAttributedString(string: "GPL-3.0-or-later · Solo carpetas vacías · Tú decides")
+                    ]
+                    if let icon = BrandAssets.icon { options[.applicationIcon] = icon }
+                    NSApplication.shared.orderFrontStandardAboutPanel(options: options)
+                }
+            }
         }
     }
 }

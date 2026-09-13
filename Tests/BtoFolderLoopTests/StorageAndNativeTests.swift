@@ -56,6 +56,37 @@ final class StorageAndNativeTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         XCTAssertThrowsError(try CleanupPlanner(fileSystem: NativeFileSystem()).analyze(root: root.path, mode: .cascade))
     }
+    func testNativePartialSelectionPreservesUnselectedChildAndSibling() throws {
+        guard ProcessInfo.processInfo.environment["BTOFOLDERLOOP_NATIVE_TRASH_TEST"] == "1" else {
+            throw XCTSkip("Native Trash selection test uses only generated directories.")
+        }
+        let root = try fixture(), fm = FileManager.default, fs = NativeFileSystem()
+        let selected = root.appendingPathComponent("selection")
+        for relative in ["A/B/C", "Other"] {
+            try fm.createDirectory(at: selected.appendingPathComponent(relative), withIntermediateDirectories: true)
+        }
+        let file = selected.appendingPathComponent("keep.txt"), original = Data("selection control".utf8)
+        try original.write(to: file)
+        let before = try fs.inspect(file.path).identity
+        let plan = try CleanupPlanner(fileSystem: fs).analyze(root: selected.path, mode: .cascade)
+        var selection = CandidateSelection(plan: plan)
+        selection.setSelected(selected.appendingPathComponent("A").path, true)
+        selection.setSelected(selected.appendingPathComponent("A/B/C").path, true)
+        let store = try SQLiteStore(location: root.appendingPathComponent("local/settings.sqlite"))
+        let report = try CleanupExecutor(fileSystem: fs, journal: store).execute(selection.approvedPlan(from: plan))
+        XCTAssertEqual(report.moved.count, 1)
+        XCTAssertEqual(report.skipped.map(\.path), [selected.appendingPathComponent("A").path])
+        XCTAssertTrue(report.errors.isEmpty)
+        for relative in ["A", "A/B", "Other"] {
+            XCTAssertTrue(fm.fileExists(atPath: selected.appendingPathComponent(relative).path))
+        }
+        let receipt = try XCTUnwrap(report.moved.first)
+        XCTAssertEqual(try fs.inspect(receipt.destination).identity, receipt.identity)
+        XCTAssertTrue(try fm.contentsOfDirectory(atPath: receipt.destination).isEmpty)
+        XCTAssertEqual(try fs.inspect(file.path).identity, before)
+        XCTAssertEqual(try Data(contentsOf: file), original)
+    }
+
     func testNativeSingleAndCascadeTrashWithOriginalFilePreserved() throws {
         guard ProcessInfo.processInfo.environment["BTOFOLDERLOOP_NATIVE_TRASH_TEST"] == "1" else {
             throw XCTSkip("Native Trash smoke test is opt-in and uses only generated empty directories.")

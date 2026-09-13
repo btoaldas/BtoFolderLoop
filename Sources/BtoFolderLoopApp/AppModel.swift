@@ -10,6 +10,8 @@ final class AppModel: ObservableObject {
     @Published var root: URL?
     @Published var mode: CleanupMode = .singlePass
     @Published var plan: CleanupPlan?
+    @Published private(set) var selection = CandidateSelection()
+    @Published private(set) var pendingApproval: CleanupPlan?
     @Published var report: CleanupReport?
     @Published var busy = false
     @Published var status = "Elige una carpeta para empezar."
@@ -52,6 +54,7 @@ final class AppModel: ObservableObject {
     func changeMode(_ newMode: CleanupMode) {
         guard !busy else { return }
         mode = newMode; plan = nil; report = nil
+        resetSelection()
         do { try store?.saveMode(mode) }
         catch { self.error = error.localizedDescription; return }
         if root != nil { analyze() }
@@ -59,6 +62,7 @@ final class AppModel: ObservableObject {
 
     func analyze() {
         guard !busy, let root else { return }
+        resetSelection()
         guard store != nil else { error = "El registro local no está disponible. Cierra y vuelve a abrir la app."; return }
         plan = nil; report = nil; error = nil; busy = true
         token = CancellationToken()
@@ -72,8 +76,9 @@ final class AppModel: ObservableObject {
                     }
                 }.value
                 plan = result
+                selection = CandidateSelection(plan: result)
                 status = result.candidates.isEmpty ? "No se encontraron carpetas vacías que se puedan retirar."
-                    : "Vista previa lista. Todavía no se ha movido nada."
+                    : "Marca las carpetas que quieras enviar. Todas empiezan desmarcadas."
             } catch {
                 if cancellation.isCancelled { status = "Análisis cancelado. No se movió nada." }
                 else { self.error = error.localizedDescription; status = "No se pudo completar el análisis." }
@@ -82,9 +87,33 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func resetSelection() {
+        selection = CandidateSelection(); pendingApproval = nil; showConfirmation = false
+    }
+
+    func setSelected(_ id: String, _ selected: Bool) {
+        guard !busy, !showConfirmation else { return }
+        selection.setSelected(id, selected)
+    }
+    func selectAll() { guard !busy, !showConfirmation else { return }; selection.selectAll() }
+    func selectNone() { guard !busy, !showConfirmation else { return }; selection.selectNone() }
+
+    func reviewSelection() {
+        guard !busy, let plan, !selection.selectedIDs.isEmpty else { return }
+        do {
+            pendingApproval = try selection.approvedPlan(from: plan)
+            showConfirmation = true
+        } catch { self.error = error.localizedDescription }
+    }
+
+    func cancelApproval() { pendingApproval = nil; showConfirmation = false }
+
     func executeApprovedPlan() {
-        guard !busy, let plan, let store, !plan.candidates.isEmpty else { return }
+        guard !busy, let plan = pendingApproval, let current = self.plan,
+              current.id == plan.id, let store, !plan.candidates.isEmpty,
+              Set(plan.candidates.map(\.id)) == selection.selectedIDs else { return }
         self.plan = nil // Consume the approval once; cannot run the same plan twice from the UI.
+        resetSelection()
         busy = true; error = nil; token = CancellationToken()
         status = "Comprobando y enviando carpetas vacías a la Papelera…"
         let cancellation = token, fs = fileSystem

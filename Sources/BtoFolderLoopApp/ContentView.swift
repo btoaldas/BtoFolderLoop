@@ -10,7 +10,7 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 14) {
-                Image(systemName: "folder.badge.minus").font(.system(size: 34)).foregroundStyle(.tint)
+                BrandIcon(size: 52)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("BtoFolderLoop").font(.largeTitle.bold())
                     Text("Menos carpetas vacías. Tú decides cada limpieza.").foregroundStyle(.secondary)
@@ -48,14 +48,7 @@ struct ContentView: View {
         .padding(24)
         .frame(minWidth: 800, minHeight: 720)
         .background(Color(nsColor: .windowBackgroundColor))
-        .alert("Enviar carpetas vacías a la Papelera", isPresented: $model.showConfirmation) {
-            Button("Cancelar", role: .cancel) {}
-            Button("Enviar a la Papelera", role: .destructive) { model.executeApprovedPlan() }
-        } message: {
-            if let plan = model.plan {
-                Text("Se comprobarán las \(plan.candidates.count) carpetas de la lista dentro de «\(URL(fileURLWithPath: plan.root.path).lastPathComponent)» en modo \(plan.mode.title.lowercased()).\n\nSolo se enviarán las que sigan vacías. La carpeta principal y los archivos se conservan. La Papelera no se vacía.")
-            }
-        }
+        .sheet(isPresented: $model.showConfirmation, onDismiss: model.cancelApproval) { ApprovalView(model: model) }
         .sheet(isPresented: $model.showHistory) { HistoryView(model: model) }
     }
 
@@ -103,7 +96,8 @@ struct ContentView: View {
     private func preview(_ plan: CleanupPlan) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("\(plan.candidates.count.formatted()) carpetas en la lista").font(.title3.bold())
+                Text("\(model.selection.selectedIDs.count.formatted()) de \(plan.candidates.count.formatted()) seleccionadas")
+                    .font(.title3.bold()).accessibilityIdentifier("selectionCount")
                 Spacer()
                 Text("\(plan.scannedDirectories.formatted()) revisadas · \(plan.passes) niveles").font(.caption).foregroundStyle(.secondary)
             }
@@ -113,10 +107,27 @@ struct ContentView: View {
                 }.foregroundStyle(.orange)
             }
             if !plan.candidates.isEmpty {
-                TextField("Filtrar la lista (no cambia qué carpetas se aprobarán)", text: $filter)
+                HStack {
+                    Button("Seleccionar todas (\(plan.candidates.count))", action: model.selectAll)
+                        .accessibilityIdentifier("selectAllButton")
+                    Button("Deseleccionar todas", action: model.selectNone)
+                        .disabled(model.selection.selectedIDs.isEmpty).accessibilityIdentifier("selectNoneButton")
+                    Spacer()
+                }
+                TextField("Filtrar por ruta (la selección se mantiene)", text: $filter)
                     .textFieldStyle(.roundedBorder).accessibilityIdentifier("filterCandidates")
+                if !filter.isEmpty {
+                    Text("El filtro solo oculta filas. Seleccionar todas incluye las \(plan.candidates.count) carpetas del análisis.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 List(plan.candidates.filter { filter.isEmpty || $0.relativePath.localizedCaseInsensitiveContains(filter) }) { candidate in
                     HStack {
+                        Toggle(candidate.relativePath, isOn: Binding(
+                            get: { model.selection.selectedIDs.contains(candidate.id) },
+                            set: { model.setSelected(candidate.id, $0) }
+                        )).toggleStyle(.checkbox).labelsHidden()
+                            .accessibilityLabel("Seleccionar " + candidate.relativePath)
+                            .accessibilityIdentifier("selectCandidate:" + candidate.relativePath)
                         Image(systemName: "folder").foregroundStyle(.secondary)
                         Text(candidate.relativePath).textSelection(.enabled)
                         Spacer()
@@ -124,13 +135,17 @@ struct ContentView: View {
                             .font(.caption).foregroundStyle(candidate.initiallyEmpty ? Color.secondary : Color.accentColor)
                     }.padding(.vertical, 2)
                 }.listStyle(.bordered).frame(minHeight: 150, maxHeight: 260).accessibilityIdentifier("candidateList")
+                if plan.mode == .cascade {
+                    Text("Marcar un padre no marca sus hijas. Si queda alguna dentro, el padre se conserva.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             HStack {
                 Button("Volver a analizar", action: model.analyze)
                 Spacer()
-                Button { model.showConfirmation = true } label: {
-                    Label("Revisar y enviar \(plan.candidates.count) a la Papelera…", systemImage: "trash")
-                }.buttonStyle(.borderedProminent).disabled(plan.candidates.isEmpty || model.busy)
+                Button(action: model.reviewSelection) {
+                    Label("Revisar \(model.selection.selectedIDs.count) seleccionadas…", systemImage: "trash")
+                }.buttonStyle(.borderedProminent).disabled(model.selection.selectedIDs.isEmpty || model.busy)
                     .accessibilityIdentifier("reviewTrashButton")
             }
         }
@@ -140,7 +155,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("\(report.moved.count.formatted()) carpetas enviadas a la Papelera", systemImage: report.errors.isEmpty ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.title3.bold()).foregroundStyle(report.errors.isEmpty ? Color.green : Color.orange)
-            Text("\(report.skipped.count) conservadas por cambios · \(report.errors.count) errores. El registro guarda los destinos de los movimientos confirmados.")
+            Text("\(report.skipped.count) conservadas por contenido o cambios · \(report.errors.count) errores. El registro guarda los destinos de los movimientos confirmados.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !report.errors.isEmpty || !report.skipped.isEmpty {
                 List(report.errors + report.skipped) { issue in
@@ -158,8 +173,8 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("1. Analiza", systemImage: "magnifyingglass").font(.headline)
             Text("Verás todas las carpetas que podrían enviarse a la Papelera.")
-            Label("2. Revisa y aprueba", systemImage: "checklist").font(.headline)
-            Text("Una carpeta con archivos ocultos no está vacía. Los enlaces y paquetes de aplicaciones se conservan.")
+            Label("2. Selecciona y aprueba", systemImage: "checklist").font(.headline)
+            Text("Todo empieza desmarcado. Elige solo lo que quieras enviar; también puedes seleccionar todas. Los archivos, enlaces y paquetes se conservan.")
             Label("3. Comprueba el resultado", systemImage: "checkmark.shield").font(.headline)
             Text("Cada movimiento se verifica y se registra solo en este Mac.")
         }.foregroundStyle(.secondary).padding(18)
@@ -170,7 +185,7 @@ private struct HistoryView: View {
     @ObservedObject var model: AppModel
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack { Text("Registro local").font(.title2.bold()); Spacer(); Button("Cerrar") { model.showHistory = false } }
+            HStack { BrandIcon(size: 32); Text("Registro local").font(.title2.bold()); Spacer(); Button("Cerrar") { model.showHistory = false } }
             Text("El registro puede contener rutas privadas. Permanece en este Mac; no se envía a GitHub ni a ningún servidor.").foregroundStyle(.secondary)
             List(model.history) { run in
                 HStack { Text(run.date); Text(CleanupMode(rawValue: run.mode)?.title ?? run.mode); Spacer(); Text("\(run.moved) enviadas · \(run.status)") }
