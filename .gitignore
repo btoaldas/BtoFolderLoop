@@ -1,0 +1,16 @@
+.build/
+.swiftpm/
+dist/
+.tmp/
+.evidence/
+*.db
+*.db-*
+*.sqlite*
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.pem
+.DS_Store
+CLAUDE.local.md
