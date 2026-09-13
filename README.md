@@ -47,7 +47,11 @@ Si no tienes las herramientas de desarrollo, macOS permite instalarlas con `xcod
 
 El script crea un `.app` y un ZIP en una nueva carpeta dentro de `dist/`. No sustituye una instalación existente. Para instalarlo, abre esa carpeta y arrastra `BtoFolderLoop.app` a **Aplicaciones**. Revisa cualquier aviso de reemplazo si ya tienes otra versión.
 
-La compilación inicial tiene firma local ad hoc, **sin notarización de Apple**. No desactives Gatekeeper ni otras protecciones para instalarla. La compilación desde el código en tu propio Mac es la vía disponible mientras se prepara una distribución firmada y notarizada.
+### Descargar la versión preliminar
+
+En [Releases](https://github.com/btoaldas/BtoFolderLoop/releases) se publica el ZIP para **Apple Silicon (arm64)**, junto con `SHA256SUMS` y `BUILD-INFO.txt`. Descarga el ZIP y el archivo de comprobación en la misma carpeta y ejecuta `shasum -a 256 -c SHA256SUMS` para comprobar la descarga. Descomprime el ZIP y revisa el aviso de seguridad de macOS antes de abrir la app. Para Intel, compila desde el código en tu Mac.
+
+La compilación inicial tiene firma local ad hoc, **sin notarización de Apple**. macOS puede bloquear un binario descargado de Internet. No se ha verificado una apertura sin avisos de Gatekeeper; tampoco se modifica su configuración. La compilación desde el código en tu propio Mac está disponible mientras se prepara una distribución firmada y notarizada.
 
 ### Desarrollo
 

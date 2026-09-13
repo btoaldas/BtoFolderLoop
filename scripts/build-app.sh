@@ -20,7 +20,9 @@ codesign --force --sign - "$app"
 codesign --verify --deep --strict "$app"
 archive="$output/BtoFolderLoop-0.1.0-macos-$(uname -m).zip"
 ditto -c -k --sequesterRsrc --keepParent "$app" "$archive"
-shasum -a 256 "$archive" > "$output/SHA256SUMS"
+(cd "$output" && shasum -a 256 "$(basename "$archive")" > SHA256SUMS)
+printf 'version=0.1.0\narchitecture=%s\nminimum_macos=14\nsigning=ad-hoc\nnotarized=false\nsource_commit=%s\n' \
+  "$(uname -m)" "$(git rev-parse HEAD)" > "$output/BUILD-INFO.txt"
 printf '%s\n' "$app" > dist/latest-app.txt
 printf '%s\n' "$output" > dist/latest-output.txt
 printf 'APP=%s\nARCHIVE=%s\n' "$app" "$archive"

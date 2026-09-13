@@ -1,9 +1,9 @@
 # Roadmap
 
-Updated: 2026-09-13. Status: v0.1.0 verified locally; publication destination confirmation pending. Level P (public preview, synthetic validation); actual user files are safety-critical and receive strict no-file-loss checks. General availability requires the signed distribution and broader OS/provider validation listed below.
+Updated: 2026-09-13. Status: v0.1.0 verified locally; source and preview binary publication authorized. Level P (public preview, synthetic validation); actual user files are safety-critical and receive strict no-file-loss checks. General availability requires the signed distribution and broader OS/provider validation listed below.
 
 ## Now
-Confirm the public repository owner/name and publish the reviewed v0.1.0 source. Both modes, reviewed plans, native Trash, SQLite persistence, UI flow, 23 tests, package and installation guide are complete locally.
+Publish the reviewed v0.1.0 source and preview release to `btoaldas/BtoFolderLoop`; verify remote CI and the downloaded package. Both modes, reviewed plans, native Trash, SQLite persistence, UI flow, 23 tests, package and installation guide are complete locally.
 
 ## Next
 Signed/notarized distribution and compatibility testing across supported macOS releases/cloud providers. Incremental features through separate operation strategies, never silent expansion of cleanup scope.
@@ -24,4 +24,4 @@ Signed/notarized distribution and compatibility testing across supported macOS r
 | Maintenance | P | Maintainers review issues/dependencies monthly, starting 2026-10-13; CI and compatibility matrix |
 
 ## Decisions pending
-Repository owner/name confirmation before remote creation. GPL selected as version 3 or later. Public binary notarization is not available without a selected signing identity; source builds remain available. Sanitized documentation snapshot for a personal knowledge vault is prepared at milestone; no live DBs or private data are exported.
+GPL selected as version 3 or later. Public binary notarization is not available without a selected signing identity; source builds remain available. Sanitized documentation snapshot for a personal knowledge vault is prepared at milestone; no live DBs or private data are exported.
