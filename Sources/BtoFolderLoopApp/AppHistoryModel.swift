@@ -11,7 +11,7 @@ extension AppModel {
     }
 
     func maintainIfIdle() {
-        guard !busy, Date().timeIntervalSince(lastMaintenance) >= 86400, let store else { return }
+        guard canWork, Date().timeIntervalSince(lastMaintenance) >= 86400, let store else { return }
         do {
             let expired = try store.expireCompletedHistory(policy: retention)
             try diagnostics?.maintain()
@@ -26,12 +26,12 @@ extension AppModel {
     }
 
     func openSettings() {
-        guard !busy else { return }
+        guard canWork else { return }
         settingsDraft = retention; showSettings = true
     }
 
     func saveSettings() {
-        guard !busy, let store else { return }
+        guard canWork, let store else { return }
         do {
             try settingsDraft.validate()
             try store.saveRetention(settingsDraft)

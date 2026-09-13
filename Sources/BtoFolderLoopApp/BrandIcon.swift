@@ -3,7 +3,10 @@ import SwiftUI
 import AppKit
 
 enum BrandAssets {
-    static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0" }
+    static var version: String {
+        guard Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String == "BtoFolderLoop" else { return "0.3.0" }
+        return Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0"
+    }
 
     // Resolve packaged or SwiftPM resources without an absolute build-directory fallback.
     static let icon: NSImage? = {

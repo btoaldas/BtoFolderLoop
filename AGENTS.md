@@ -3,10 +3,10 @@
 Open-source native macOS utility. GPL-3.0-or-later. Initial release: preview.
 
 ## Product contract
-Choose or drop one directory, inspect a complete preview, select candidates and explicitly approve moving only empty subdirectories to macOS Trash. Every scan begins with all candidates deselected. Selection never expands to parents or children implicitly. Single-pass considers only initially empty leaves. Cascade includes only selected ancestors that become empty. Never remove the selected root, files, symbolic links, packages, unreadable entries, or anything not in the approved subset. Never empty Trash. New or changed contents invalidate eligibility.
+Choose or drop one or multiple directories (or macOS folder aliases/symlinks resolved explicitly to real roots), inspect a complete preview, select candidates and explicitly approve moving only empty subdirectories to macOS Trash. Duplicate and overlapping roots are scanned only once. Batch execution is sequential, stops at an error/cancellation and journals each root independently. Every scan begins with all candidates deselected. Selection never expands to parents or children implicitly. Single-pass considers only initially empty leaves. Cascade includes only selected ancestors that become empty. Never remove any explicitly selected root, including nested ones, original shortcuts, files, symbolic links, packages, unreadable entries, or anything not in the approved subset. Never empty Trash. New or changed contents invalidate eligibility.
 
 ## Structure and commands
-Swift Package targets: BtoFolderLoopCore (models/planner/executor and ports), BtoFolderLoopMac (native filesystem), BtoFolderLoopStorage (SQLite), BtoFolderLoopApp (SwiftUI). No third-party dependencies or network API.
+Swift Package targets: BtoFolderLoopCore (models/planner/executor and ports), BtoFolderLoopMac (native filesystem), BtoFolderLoopStorage (SQLite), BtoFolderLoopApp (SwiftUI). Sparkle 2.9.6 is pinned for signed application updates. Folder operations remain local; only public release checks, signed feeds and update downloads use the network. Never send folder paths, logs or system profiling.
 `swift test`; `bash scripts/build-app.sh`; `python3 scripts/check-public.py`.
 
 ## Authority and safety

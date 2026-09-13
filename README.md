@@ -2,9 +2,9 @@
 
 <img src="Sources/BtoFolderLoopApp/Resources/BrandIcon.png" alt="Icono de BtoFolderLoop: carpeta y recorrido circular" width="112" height="112">
 
-**Arrastra una carpeta, marca las carpetas vacías que quieras y aprueba su envío a la Papelera.**
+**Arrastra carpetas, marca las carpetas vacías que quieras y aprueba su envío a la Papelera.**
 
-Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. Funciona localmente: sin cuentas, servidores, telemetría ni dependencias de terceros. Última publicación: **0.2.0 (preview)**. Este código prepara **0.3.0**, con historial y retención; todavía no está publicado como release. Interfaz en español.
+Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. La limpieza funciona localmente, sin cuentas ni telemetría. Solo el comprobador de versiones y el actualizador contactan con GitHub. Última publicación: **0.2.0 (preview)**. Este código prepara **0.3.0**, con historial, retención, lotes de carpetas, accesos directos y actualización desde la aplicación; todavía no está publicado como release. Interfaz en español.
 
 ## Los dos modos
 
@@ -23,11 +23,19 @@ El filtro solo oculta filas; no cambia las casillas. **Seleccionar todas** inclu
 
 ## Uso
 
-1. Arrastra una carpeta a la ventana o pulsa **Elegir carpeta…**.
+1. Arrastra una o varias carpetas a la ventana o pulsa **Elegir carpetas…**. Puedes incluir alias del Finder o enlaces simbólicos a carpetas; revisa las **Rutas reales** que aparecen.
 2. Elige **Una pasada** o **En bucle**. Cambiar de modo genera una nueva vista previa.
 3. Revisa el listado y marca las carpetas que quieras enviar. Las rutas que no se puedan leer se conservan.
 4. Pulsa **Revisar seleccionadas…**, comprueba la lista final y confirma el envío a la Papelera. Con cero seleccionadas, el botón queda desactivado.
 5. Comprueba el resultado y el **Registro**. Puedes detener el proceso antes del siguiente movimiento.
+
+### Varias carpetas y accesos directos (código 0.3.0)
+
+Cada lote admite hasta 128 entradas y un máximo total de 250.000 directorios revisados. Un nuevo arrastre o elección sustituye la vista previa del lote y deja las casillas desmarcadas; no añade trabajos a una limpieza en curso. Las rutas repetidas y las incluidas dentro de otra se analizan una sola vez. **Todas las carpetas principales que elegiste se conservan**, incluso si arrastraste un padre y una hija anidada.
+
+Los alias del Finder y enlaces simbólicos se resuelven solo al elegirlos, sin modificar el acceso original. La vista muestra el destino real; las candidatas y la confirmación incluyen la carpeta principal a la que pertenecen. Si seleccionas `A` y un alias de `A`, no se duplica el trabajo. Los accesos rotos, ciclos, archivos normales, paquetes y carpetas protegidas se señalan y se conservan. No se montan volúmenes para resolver un alias. Los accesos `.lnk` de Windows no están admitidos. Los enlaces encontrados **dentro** de un árbol siguen protegidos y no se recorren.
+
+El lote analiza las carpetas y las ejecuta en secuencia, con un registro independiente por árbol. Un error o una orden de detener conserva las pendientes; no sigue enviando carpetas de otro árbol. La selección nunca se amplía por sí sola. Una entrada rechazada no impide revisar las demás, pero una cancelación o alcanzar el límite global invalida la vista previa parcial.
 
 Un archivo oculto también cuenta como archivo: una carpeta con `.DS_Store` **no está vacía**. Se conservan archivos, enlaces, paquetes de aplicaciones, bibliotecas de fotos, directorios protegidos y destinos de enlaces encontrados en el árbol. No se buscan referencias fuera de la carpeta seleccionada.
 
@@ -37,6 +45,7 @@ Antes de cada movimiento se vuelven a comprobar la identidad, los padres y el co
 
 - macOS 14 o posterior.
 - Para compilar: Xcode Command Line Tools y Swift 5.9 o posterior; recomendado Swift 6.
+- Swift Package Manager descarga Sparkle **2.9.6**, fijado en `Package.resolved`, al compilar. El framework y su licencia se incluyen en la app.
 - El paquete utiliza SQLite incluido en macOS. No hace falta instalar Python, Node ni un servidor para ejecutar la app.
 
 ### Compilar desde el código
@@ -59,6 +68,16 @@ En [Releases](https://github.com/btoaldas/BtoFolderLoop/releases) se publica el 
 
 La compilación inicial tiene firma local ad hoc, **sin notarización de Apple**. macOS puede bloquear un binario descargado de Internet. No se ha verificado una apertura sin avisos de Gatekeeper; tampoco se modifica su configuración. La compilación desde el código en tu propio Mac está disponible mientras se prepara una distribución firmada y notarizada.
 
+### Actualizar desde la aplicación (código 0.3.0)
+
+El pie muestra la versión instalada y consulta una vez al abrir el último release compatible publicado en GitHub, incluidas las versiones preliminares de este proyecto. **Buscar actualización** repite la consulta. **Novedades** abre la página del release.
+
+Cuando hay una versión superior, **Actualizar y reiniciar** descarga el paquete, comprueba las firmas del listado y del archivo, instala y reinicia la aplicación. Ese clic autoriza todo el proceso; macOS aún puede pedir permiso de instalación. El botón queda desactivado durante un análisis o limpieza. Mientras se actualiza, tampoco puede empezar un trabajo de carpetas. No descarga ni instala por iniciativa propia, no ofrece versiones anteriores y permite cancelar antes de preparar la instalación.
+
+Los datos de trabajo permanecen en su carpeta local, fuera del paquete actualizado. La migración de historial hace el respaldo descrito más abajo. Si no hay conexión, un paquete compatible o un listado firmado válido, la app muestra el problema y la limpieza sigue disponible. Los diagnósticos también registran las fases de actualización con códigos, sin rutas privadas.
+
+La versión pública **0.2.0 todavía no contiene este botón**: su primera actualización a 0.3.0 requerirá instalar el nuevo paquete. La publicación del listado firmado está pendiente junto con ese release; las pruebas locales de instalación y reinicio usan aplicaciones artificiales. Consulta el [procedimiento de publicación firmada](docs/runbooks/signed-updates.md). Las firmas de actualización no sustituyen la notarización de Apple.
+
 ### Desarrollo
 
 ```sh
@@ -74,7 +93,9 @@ BTOFOLDERLOOP_NATIVE_TRASH_TEST=1 swift test \
   --filter StorageAndNativeTests/testNativeSingleAndCascadeTrashWithOriginalFilePreserved
 ```
 
-Esa prueba deja tres carpetas vacías de ejemplo en la Papelera. No la vacía. Para ejecutar también la comprobación nativa de selección parcial usa `BTOFOLDERLOOP_NATIVE_TRASH_TEST=1 swift test`: la suite completa deja cuatro carpetas vacías artificiales en la Papelera. Las demás pruebas conservan sus datos artificiales dentro de `.tmp/`, excluido de Git.
+Prueba adicional del lote con un alias, una raíz anidada, archivos de control y dos registros independientes: `BTOFOLDERLOOP_NATIVE_BATCH_TEST=1 swift test --filter FolderInputTests/testNativeBatchWithAliasNestedRootAndIndependentReceiptChecks`. Deja tres carpetas vacías artificiales en la Papelera; verifica destinos e identidades y conserva originales y accesos.
+
+La primera prueba deja tres carpetas vacías de ejemplo en la Papelera. No la vacía. Para ejecutar también la comprobación nativa de selección parcial usa `BTOFOLDERLOOP_NATIVE_TRASH_TEST=1 swift test`: la suite completa deja cuatro carpetas vacías artificiales en la Papelera. Las demás pruebas conservan sus datos artificiales dentro de `.tmp/`, excluido de Git.
 
 ## Configuración, registro y privacidad
 
@@ -125,6 +146,8 @@ Validación inicial en macOS 26 sobre Apple Silicon: pruebas de planificación, 
 No repara OneDrive ni fuerza la descarga de archivos. Las entradas que no se puedan revisar quedan conservadas. Evita que otras aplicaciones escriban en el árbol durante la limpieza: ninguna API de movimiento puede garantizar ausencia total de carreras con escritores externos. El resultado se comprueba y cualquier discrepancia detiene el proceso.
 
 ## Licencia
+
+Sparkle conserva su licencia MIT y los avisos de sus componentes, incluidos en `Sparkle-LICENSE.txt` dentro del paquete. El código propio sigue bajo GPL-3.0-or-later.
 
 Copyright © 2026 BtoFolderLoop contributors.
 

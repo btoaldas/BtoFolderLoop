@@ -8,10 +8,14 @@ build_id="$(date +%Y%m%d-%H%M%S)-$$"
 output="$(pwd)/dist/$build_id"
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)
 app="$output/BtoFolderLoop.app"
-mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$app/Contents/Frameworks"
 cp "$bin_dir/BtoFolderLoop" "$app/Contents/MacOS/BtoFolderLoop"
 strip -S "$app/Contents/MacOS/BtoFolderLoop"
 cp Resources/Info.plist "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :SUFeedURL https://raw.githubusercontent.com/btoaldas/BtoFolderLoop/main/updates/appcast-macos-$(uname -m).xml" "$app/Contents/Info.plist"
+sparkle="$(pwd)/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+ditto "$sparkle" "$app/Contents/Frameworks/Sparkle.framework"
+cp .build/artifacts/sparkle/Sparkle/LICENSE "$app/Contents/Resources/Sparkle-LICENSE.txt"
 for bundle in "$bin_dir"/*.bundle; do
   [ -d "$bundle" ] || continue
   cp -R "$bundle" "$app/Contents/Resources/"

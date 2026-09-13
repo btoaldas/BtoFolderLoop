@@ -15,4 +15,8 @@ Settings --> DB
 FS --> Trash[macOS Trash]
 ```
 
-Paths are private local data. They remain only in the local journal; no network traffic. Preview is immutable and bounds execution. Filesystem identity and emptiness are rechecked before every move. Concurrent changes can still race any native filesystem operation; detect post-move discrepancies, halt and expose the recorded destination rather than hiding or deleting data.
+Paths are private local data. They remain only in the local journal; release checks and downloads never include them. Preview is immutable and bounds execution. Filesystem identity and emptiness are rechecked before every move. Concurrent changes can still race any native filesystem operation; detect post-move discrepancies, halt and expose the recorded destination rather than hiding or deleting data.
+
+## Update extension (0.3.0)
+
+Keep cleanup local and its four modules independent. Use pinned Sparkle 2.9.6 for signed feed/archive verification, native installation and relaunch instead of maintaining a self-replacing shell script. A small release client and footer driver live in the app target; strict release parsing stays in the core. The SQLite journal is outside the updated bundle.

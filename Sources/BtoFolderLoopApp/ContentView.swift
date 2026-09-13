@@ -19,34 +19,43 @@ struct ContentView: View {
                 Button { model.openHistory() } label: { Label("Registro", systemImage: "clock.arrow.circlepath") }
                     .accessibilityIdentifier("historyButton")
                 Button { model.openSettings() } label: { Image(systemName: "gearshape") }
-                    .disabled(model.busy).help("Configuración de registros").accessibilityIdentifier("settingsButton")
+                    .disabled(!model.canWork).help("Configuración de registros").accessibilityIdentifier("settingsButton")
             }
-            dropZone
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(CleanupMode.allCases, id: \.rawValue) { mode in modeCard(mode) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    dropZone
+                    if !model.resolvedFolders.isEmpty || !model.inputIssues.isEmpty { FolderInputsView(model: model) }
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(CleanupMode.allCases, id: \.rawValue) { mode in modeCard(mode) }
+                    }
+                    if model.busy {
+                        HStack { ProgressView().controlSize(.small); Text(model.status); Spacer(); Button("Detener", action: model.cancel) }
+                            .padding(12).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                    } else {
+                        Text(model.status).font(.callout).foregroundStyle(.secondary).accessibilityIdentifier("statusText")
+                    }
+                    if let error = model.error {
+                        Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                            .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let warning = model.diagnosticWarning { Text(warning).font(.caption).foregroundStyle(.orange) }
+                    if let plan = model.plan { preview(plan) }
+                    else if let report = model.report { result(report) }
+                    else if !model.busy { welcome }
+                }.frame(maxWidth: .infinity, alignment: .leading)
             }
-            if model.busy {
-                HStack { ProgressView().controlSize(.small); Text(model.status); Spacer(); Button("Detener", action: model.cancel) }
-                    .padding(12).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-            } else {
-                Text(model.status).font(.callout).foregroundStyle(.secondary).accessibilityIdentifier("statusText")
-            }
-            if let error = model.error {
-                Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-            }
-            if let warning = model.diagnosticWarning { Text(warning).font(.caption).foregroundStyle(.orange) }
-            if let plan = model.plan { preview(plan) }
-            else if let report = model.report { result(report) }
-            else if !model.busy { welcome }
             Spacer(minLength: 0)
             Divider()
             HStack {
-                Label("Solo carpetas vacías · Archivos y carpeta principal protegidos", systemImage: "checkmark.shield")
+                Label("Solo carpetas vacías · Archivos y carpetas principales protegidos", systemImage: "checkmark.shield")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Text("GPL v3+ · Local").font(.caption).foregroundStyle(.secondary)
+                Text("GPL v3+").font(.caption).foregroundStyle(.secondary)
             }
+            if let updates = model.updates {
+                UpdateFooterView(updates: updates, folderWorkBusy: model.busy)
+                    .task { await updates.initialCheck() }
+            } else { Text("v\(BrandAssets.version)").font(.caption).foregroundStyle(.secondary) }
         }
         .padding(24)
         .frame(minWidth: 800, minHeight: 720)
@@ -62,20 +71,20 @@ struct ContentView: View {
             Image(systemName: model.root == nil ? "tray.and.arrow.down" : "folder.fill")
                 .font(.system(size: 30)).foregroundStyle(.tint)
             VStack(alignment: .leading, spacing: 5) {
-                Text(model.root?.lastPathComponent ?? "Arrastra aquí una carpeta").font(.title3.bold())
-                Text(model.root?.path ?? "La analizamos primero. Tú revisas la lista antes de mover nada.")
+                Text(model.inputURLs.isEmpty ? "Arrastra carpetas o accesos directos" : "\(model.inputURLs.count) entradas en este lote").font(.title3.bold())
+                Text("Puedes arrastrar varias a la vez. Revisarás sus rutas reales antes de mover nada.")
                     .font(.callout).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
             }
             Spacer()
-            Button(model.root == nil ? "Elegir carpeta…" : "Cambiar…", action: model.choose)
-                .disabled(model.busy).accessibilityIdentifier("chooseFolderButton")
+            Button(model.inputURLs.isEmpty ? "Elegir carpetas…" : "Cambiar lote…", action: model.choose)
+                .disabled(!model.canWork).accessibilityIdentifier("chooseFolderButton")
         }
         .padding(20).frame(maxWidth: .infinity, minHeight: 94)
         .background(Color.accentColor.opacity(targeted ? 0.14 : 0.055), in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.accentColor.opacity(targeted ? 0.8 : 0.3), style: StrokeStyle(lineWidth: 1.5, dash: [6])))
         .dropDestination(for: URL.self) { urls, _ in
-            guard urls.count == 1, let url = urls.first, !model.busy else { return false }
-            model.select(url); return true
+            guard !urls.isEmpty, model.canWork else { return false }
+            model.select(urls); return true
         } isTargeted: { targeted = $0 }
         .accessibilityIdentifier("folderDropZone")
     }
@@ -94,11 +103,11 @@ struct ContentView: View {
             .padding(14).frame(maxWidth: .infinity, minHeight: 85, alignment: .topLeading)
             .background(model.mode == mode ? Color.accentColor.opacity(0.08) : Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.mode == mode ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: 1))
-        }.buttonStyle(.plain).disabled(model.busy).accessibilityIdentifier(mode.rawValue + "Mode")
+        }.buttonStyle(.plain).disabled(!model.canWork).accessibilityIdentifier(mode.rawValue + "Mode")
             .accessibilityAddTraits(model.mode == mode ? .isSelected : [])
     }
 
-    private func preview(_ plan: CleanupPlan) -> some View {
+    private func preview(_ plan: CleanupBatch) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("\(model.selection.selectedIDs.count.formatted()) de \(plan.candidates.count.formatted()) seleccionadas")
@@ -125,32 +134,35 @@ struct ContentView: View {
                     Text("El filtro solo oculta filas. Seleccionar todas incluye las \(plan.candidates.count) carpetas del análisis.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                List(plan.candidates.filter { filter.isEmpty || $0.relativePath.localizedCaseInsensitiveContains(filter) }) { candidate in
+                List(plan.candidates.filter { filter.isEmpty || $0.path.localizedCaseInsensitiveContains(filter) }) { candidate in
                     HStack {
                         Toggle(candidate.relativePath, isOn: Binding(
                             get: { model.selection.selectedIDs.contains(candidate.id) },
                             set: { model.setSelected(candidate.id, $0) }
                         )).toggleStyle(.checkbox).labelsHidden()
-                            .accessibilityLabel("Seleccionar " + candidate.relativePath)
-                            .accessibilityIdentifier("selectCandidate:" + candidate.relativePath)
+                            .accessibilityLabel("Seleccionar " + candidate.path)
+                            .accessibilityIdentifier("selectCandidate:" + candidate.path)
                         Image(systemName: "folder").foregroundStyle(.secondary)
-                        Text(candidate.relativePath).textSelection(.enabled)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(candidate.relativePath)
+                            if plan.plans.count > 1 { Text(candidate.rootPath).font(.caption).foregroundStyle(.secondary) }
+                        }.textSelection(.enabled)
                         Spacer()
                         Text(candidate.initiallyEmpty ? "Vacía ahora" : "Después de sus hijas · \(candidate.pass)")
                             .font(.caption).foregroundStyle(candidate.initiallyEmpty ? Color.secondary : Color.accentColor)
                     }.padding(.vertical, 2)
-                }.listStyle(.bordered).frame(minHeight: 150, maxHeight: 260).accessibilityIdentifier("candidateList")
+                }.listStyle(.bordered).frame(height: 240).accessibilityIdentifier("candidateList")
                 if plan.mode == .cascade {
                     Text("Marcar un padre no marca sus hijas. Si queda alguna dentro, el padre se conserva.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             HStack {
-                Button("Volver a analizar", action: model.analyze)
+                Button("Volver a analizar", action: model.analyze).disabled(!model.canWork)
                 Spacer()
                 Button(action: model.reviewSelection) {
                     Label("Revisar \(model.selection.selectedIDs.count) seleccionadas…", systemImage: "trash")
-                }.buttonStyle(.borderedProminent).disabled(model.selection.selectedIDs.isEmpty || model.busy)
+                }.buttonStyle(.borderedProminent).disabled(model.selection.selectedIDs.isEmpty || !model.canWork)
                     .accessibilityIdentifier("reviewTrashButton")
             }
         }

@@ -7,13 +7,19 @@ import BtoFolderLoopStorage
 
 @MainActor
 final class AppModel: ObservableObject {
-    @Published var root: URL?
+    @Published var inputURLs: [URL] = []
+    @Published var resolvedFolders: [ResolvedFolder] = []
+    @Published var inputIssues: [ScanIssue] = []
+    var root: URL? { resolvedFolders.first?.url }
     @Published var mode: CleanupMode = .singlePass
-    @Published var plan: CleanupPlan?
-    @Published private(set) var selection = CandidateSelection()
-    @Published private(set) var pendingApproval: CleanupPlan?
+    @Published var plan: CleanupBatch?
+    @Published private(set) var selection = BatchSelection()
+    @Published private(set) var pendingApproval: CleanupBatch?
     @Published var report: CleanupReport?
     @Published var busy = false
+    @Published var updating = false
+    @Published var updates: ReleaseUpdater?
+    var canWork: Bool { !busy && !updating }
     @Published var activeRunID: String?
     @Published var status = "Elige una carpeta para empezar."
     @Published var error: String?
@@ -28,8 +34,8 @@ final class AppModel: ObservableObject {
     @Published var diagnosticWarning: String?
     @Published var showHistory = false
     @Published var showConfirmation = false
-    private var token = CancellationToken()
-    private let fileSystem = NativeFileSystem()
+    var token = CancellationToken()
+    let fileSystem = NativeFileSystem()
     private(set) var store: SQLiteStore?
     var diagnostics: DiagnosticLog?
     var lastMaintenance = Date.distantPast
@@ -49,78 +55,29 @@ final class AppModel: ObservableObject {
             log(.applicationOpened)
             maintainIfIdle()
         } catch { self.error = error.localizedDescription }
-    }
-
-    func choose() {
-        guard !busy else { return }
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false; panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false; panel.prompt = "Analizar carpeta"
-        if panel.runModal() == .OK, let url = panel.url { select(url) }
-    }
-
-    func select(_ url: URL) {
-        guard !busy else { return }
-        guard url.isFileURL else { error = "Arrastra una carpeta local."; return }
-        root = url.standardizedFileURL
-        analyze()
-    }
-
-    func changeMode(_ newMode: CleanupMode) {
-        guard !busy else { return }
-        mode = newMode; plan = nil; report = nil
-        resetSelection()
-        do { try store?.saveMode(mode) }
-        catch { self.error = error.localizedDescription; return }
-        if root != nil { analyze() }
-    }
-
-    func analyze() {
-        guard !busy, let root else { return }
-        resetSelection()
-        guard store != nil else { error = "El registro local no está disponible. Cierra y vuelve a abrir la app."; return }
-        plan = nil; report = nil; error = nil; busy = true
-        token = CancellationToken()
-        status = "Leyendo carpetas… No se está moviendo nada."
-        log(.scanStarted)
-        let selectedMode = mode, cancellation = token, fs = fileSystem
-        Task {
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try CleanupPlanner(fileSystem: fs).analyze(root: root.path, mode: selectedMode, cancellation: cancellation) { count in
-                        Task { @MainActor [weak self] in self?.status = "\(count.formatted()) carpetas revisadas…" }
-                    }
-                }.value
-                plan = result
-                log(.scanCompleted, count: result.scannedDirectories)
-                selection = CandidateSelection(plan: result)
-                status = result.candidates.isEmpty ? "No se encontraron carpetas vacías que se puedan retirar."
-                    : "Marca las carpetas que quieras enviar. Todas empiezan desmarcadas."
-            } catch {
-                log(.scanStopped)
-                if cancellation.isCancelled { status = "Análisis cancelado. No se movió nada." }
-                else { self.error = error.localizedDescription; status = "No se pudo completar el análisis." }
-            }
-            busy = false
-            maintainIfIdle()
+        if storageDirectory == nil, ProcessInfo.processInfo.environment["BTOFOLDERLOOP_TEST_DATA"] == nil {
+            updates = ReleaseUpdater(version: BrandAssets.version,
+                                     workIsBusy: { [weak self] in self?.busy ?? true },
+                                     activityChanged: { [weak self] active in self?.updating = active },
+                                     record: { [weak self] code in self?.log(code) })
         }
     }
 
-    private func resetSelection() {
-        selection = CandidateSelection(); pendingApproval = nil; showConfirmation = false
+    func resetSelection(for batch: CleanupBatch? = nil) {
+        selection = BatchSelection(batch: batch); pendingApproval = nil; showConfirmation = false
     }
 
     func setSelected(_ id: String, _ selected: Bool) {
-        guard !busy, !showConfirmation else { return }
+        guard canWork, !showConfirmation else { return }
         selection.setSelected(id, selected)
     }
-    func selectAll() { guard !busy, !showConfirmation else { return }; selection.selectAll() }
-    func selectNone() { guard !busy, !showConfirmation else { return }; selection.selectNone() }
+    func selectAll() { guard canWork, !showConfirmation else { return }; selection.selectAll() }
+    func selectNone() { guard canWork, !showConfirmation else { return }; selection.selectNone() }
 
     func reviewSelection() {
-        guard !busy, let plan, !selection.selectedIDs.isEmpty else { return }
+        guard canWork, let plan, !selection.selectedIDs.isEmpty else { return }
         do {
-            pendingApproval = try selection.approvedPlan(from: plan)
+            pendingApproval = try selection.approvedBatch(from: plan)
             showConfirmation = true
         } catch { self.error = error.localizedDescription }
     }
@@ -128,13 +85,13 @@ final class AppModel: ObservableObject {
     func cancelApproval() { pendingApproval = nil; showConfirmation = false }
 
     func executeApprovedPlan() {
-        guard !busy, let plan = pendingApproval, let current = self.plan,
+        guard canWork, let plan = pendingApproval, let current = self.plan,
               current.id == plan.id, let store, !plan.candidates.isEmpty,
               Set(plan.candidates.map(\.id)) == selection.selectedIDs else { return }
         self.plan = nil // Consume the approval once; cannot run the same plan twice from the UI.
         resetSelection()
         busy = true; error = nil; token = CancellationToken()
-        activeRunID = plan.id.uuidString
+        activeRunID = nil
         status = "Comprobando y enviando carpetas vacías a la Papelera…"
         let cancellation = token, fs = fileSystem
         let journal = ObservedJournal(store: store, log: diagnostics) { [weak self] in
@@ -143,13 +100,17 @@ final class AppModel: ObservableObject {
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) {
-                    try CleanupExecutor(fileSystem: fs, journal: journal).execute(plan, cancellation: cancellation) { done, total in
-                        Task { @MainActor [weak self] in self?.status = "\(done.formatted()) de \(total.formatted()) carpetas comprobadas…" }
+                    try BatchExecutor(fileSystem: fs, journal: journal).execute(plan, cancellation: cancellation) { done, total, runID in
+                        Task { @MainActor [weak self] in
+                            guard let self, self.busy, self.token === cancellation else { return }
+                            self.activeRunID = runID.uuidString
+                            self.status = "\(done.formatted()) de \(total.formatted()) carpetas comprobadas…"
+                        }
                     }
                 }.value
                 report = result
                 status = result.cancelled ? "Detenido por ti. Los movimientos realizados están registrados."
-                    : (result.errors.isEmpty ? "Proceso terminado." : "Proceso detenido. Revisa el detalle antes de continuar.")
+                    : (result.errors.isEmpty ? "Proceso terminado." : "Lote detenido. Las carpetas pendientes se conservan; revisa el detalle.")
             } catch { log(.cleanupStopped); self.error = error.localizedDescription; status = "Proceso detenido." }
             activeRunID = nil; busy = false
             maintainIfIdle()

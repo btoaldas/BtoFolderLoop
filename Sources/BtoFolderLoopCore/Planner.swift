@@ -6,6 +6,7 @@ public struct CleanupPlanner {
     public init(fileSystem: FolderFileSystem) { fs = fileSystem }
 
     public func analyze(root: String, mode: CleanupMode, cancellation: CancellationToken = .init(),
+                        maximumDirectories: Int = 250_000,
                         progress: (Int) -> Void = { _ in }) throws -> CleanupPlan {
         let rootPath = URL(fileURLWithPath: root).standardizedFileURL.path
         guard rootPath != "/" else { throw CleanupError.unsafeRoot }
@@ -25,7 +26,7 @@ public struct CleanupPlanner {
         var queue = [rootEntry]
         while let dir = queue.popLast() {
             if cancellation.isCancelled { throw CleanupError.cancelled }
-            guard directories.count < 250_000 else { throw CleanupError.limitExceeded }
+            guard directories.count < maximumDirectories else { throw CleanupError.limitExceeded }
             directories[dir.path] = DirectoryIdentity(path: dir.path, identity: dir.identity)
             do {
                 let now = try fs.inspect(dir.path)

@@ -7,9 +7,11 @@ public enum DiagnosticCode: String, Codable, Sendable {
     case applicationOpened, scanStarted, scanCompleted, scanStopped
     case cleanupStarted, cleanupProgress, cleanupCompleted, cleanupStopped, journalFailed
     case maintenanceCompleted, maintenanceFailed, preferencesSaved
+    case updateCheckStarted, updateCheckCompleted, updateCheckFailed, updateRequested
+    case updateDownloadStarted, updateInstalling, updateCancelled, updateFailed
     var level: String {
         switch self {
-        case .journalFailed, .maintenanceFailed: return "error"
+        case .journalFailed, .maintenanceFailed, .updateCheckFailed, .updateFailed: return "error"
         case .scanStopped, .cleanupStopped: return "warning"
         default: return "info"
         }
