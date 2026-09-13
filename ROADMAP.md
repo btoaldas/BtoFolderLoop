@@ -1,11 +1,11 @@
 # Roadmap
 
-Updated: 2026-09-13. Status: v0.2.0 selection and identity preview published; download and application resources verified. Level P (public preview, synthetic validation); actual user files are safety-critical and receive strict no-file-loss checks. General availability requires the signed distribution and broader OS/provider validation listed below.
+Updated: 2026-09-13. Status: v0.3.0 history, signed updates and multiple-folder preview published and installed; public download, feed and migration verified. Level P (public preview, synthetic validation); actual user files are safety-critical and receive strict no-file-loss checks. General availability requires the signed distribution and broader OS/provider validation listed below.
 
 ## Now
-Prepare v0.3.0 locally: live durable counters, worked-on folder history, per-run event pagination, typed rotating diagnostics, configurable retention a footer with signed one-click updates, and multiple-folder/alias inputs with independent root journals and overlap protection. See [scope and safeguards](docs/specs/003-history-retention.md). The observed v0.2.0 cleanup completed without reported errors; development kept its app and database untouched. Signed update/install/relaunch tests use independent synthetic applications. New publication and installation are not part of this stage.
+v0.3.0 is published and verified: live durable history, configurable diagnostic/history retention, signed one-click update footer, multiple-folder and explicit shortcut inputs, duplicate/nested-root protection. Public source/tag CI passed. The downloaded archive/feed signatures and source commit match the reviewed package. An authorized existing installation was upgraded only while idle; original journals and preferences were preserved and migration backup/integrity checks passed.
 
-The latest public release remains [v0.2.0](https://github.com/btoaldas/BtoFolderLoop/releases/tag/v0.2.0), with default-off selection and the original icon. Its [public milestone](docs/hitos/2026-09-13-v0.2.0-public.md) records package verification; v0.1.0 stays available.
+See [the public v0.3.0 milestone](docs/hitos/2026-09-13-v0.3.0-public.md) and [the release](https://github.com/btoaldas/BtoFolderLoop/releases/tag/v0.3.0). Older v0.1.0/v0.2.0 releases remain available. No folder cleanup starts automatically after updating.
 
 ## Next
 Signed/notarized distribution, compatibility testing across macOS/cloud providers and cross-application drag-and-drop. Candidate improvements: hierarchical preview, explicit persistent exclusions and guided restoration from recorded Trash destinations while available. These ideas are not active implementation scope. Incremental features keep separate strategies and never silently expand approval.

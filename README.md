@@ -4,7 +4,7 @@
 
 **Arrastra carpetas, marca las carpetas vacías que quieras y aprueba su envío a la Papelera.**
 
-Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. La limpieza funciona localmente, sin cuentas ni telemetría. Solo el comprobador de versiones y el actualizador contactan con GitHub. Última publicación: **0.2.0 (preview)**. Este código prepara **0.3.0**, con historial, retención, lotes de carpetas, accesos directos y actualización desde la aplicación; todavía no está publicado como release. Interfaz en español.
+Aplicación nativa para macOS, gratuita y de código abierto bajo **GPL-3.0-or-later**. La limpieza funciona localmente, sin cuentas ni telemetría. Solo el comprobador de versiones y el actualizador contactan con GitHub. Última publicación: **0.3.0 (preview)**, con historial, retención, lotes de carpetas, accesos directos y actualización desde la aplicación. Interfaz en español.
 
 ## Los dos modos
 
@@ -29,7 +29,7 @@ El filtro solo oculta filas; no cambia las casillas. **Seleccionar todas** inclu
 4. Pulsa **Revisar seleccionadas…**, comprueba la lista final y confirma el envío a la Papelera. Con cero seleccionadas, el botón queda desactivado.
 5. Comprueba el resultado y el **Registro**. Puedes detener el proceso antes del siguiente movimiento.
 
-### Varias carpetas y accesos directos (código 0.3.0)
+### Varias carpetas y accesos directos (desde 0.3.0)
 
 Cada lote admite hasta 128 entradas y un máximo total de 250.000 directorios revisados. Un nuevo arrastre o elección sustituye la vista previa del lote y deja las casillas desmarcadas; no añade trabajos a una limpieza en curso. Las rutas repetidas y las incluidas dentro de otra se analizan una sola vez. **Todas las carpetas principales que elegiste se conservan**, incluso si arrastraste un padre y una hija anidada.
 
@@ -68,7 +68,7 @@ En [Releases](https://github.com/btoaldas/BtoFolderLoop/releases) se publica el 
 
 La compilación inicial tiene firma local ad hoc, **sin notarización de Apple**. macOS puede bloquear un binario descargado de Internet. No se ha verificado una apertura sin avisos de Gatekeeper; tampoco se modifica su configuración. La compilación desde el código en tu propio Mac está disponible mientras se prepara una distribución firmada y notarizada.
 
-### Actualizar desde la aplicación (código 0.3.0)
+### Actualizar desde la aplicación (desde 0.3.0)
 
 El pie muestra la versión instalada y consulta una vez al abrir el último release compatible publicado en GitHub, incluidas las versiones preliminares de este proyecto. **Buscar actualización** repite la consulta. **Novedades** abre la página del release.
 
@@ -76,7 +76,7 @@ Cuando hay una versión superior, **Actualizar y reiniciar** descarga el paquete
 
 Los datos de trabajo permanecen en su carpeta local, fuera del paquete actualizado. La migración de historial hace el respaldo descrito más abajo. Si no hay conexión, un paquete compatible o un listado firmado válido, la app muestra el problema y la limpieza sigue disponible. Los diagnósticos también registran las fases de actualización con códigos, sin rutas privadas.
 
-La versión pública **0.2.0 todavía no contiene este botón**: su primera actualización a 0.3.0 requerirá instalar el nuevo paquete. La publicación del listado firmado está pendiente junto con ese release; las pruebas locales de instalación y reinicio usan aplicaciones artificiales. Consulta el [procedimiento de publicación firmada](docs/runbooks/signed-updates.md). Las firmas de actualización no sustituyen la notarización de Apple.
+La versión pública **0.2.0 todavía no contiene este botón**: su primera actualización a 0.3.0 requerirá instalar el nuevo paquete. El release incluye su listado firmado y el pie comprueba la versión pública vigente. Las pruebas de instalación, reinicio y rechazo de paquetes alterados usan aplicaciones artificiales. Consulta el [procedimiento de publicación firmada](docs/runbooks/signed-updates.md). Las firmas de actualización no sustituyen la notarización de Apple.
 
 ### Desarrollo
 
@@ -107,7 +107,7 @@ SQLite guarda el modo elegido y la bitácora de movimientos en:
 
 Cada movimiento tiene un evento previo y un resultado. El registro incluye las rutas originales y los destinos de la Papelera; puede contener nombres privados, permanece local y no se sube a GitHub. Puedes localizarlo con **Registro → Mostrar base local**.
 
-En el código 0.3.0, **Registro** permite consultar operaciones y carpetas trabajadas, con fecha local, modo, cantidades enviadas/conservadas, errores y última actividad. El contador se guarda durante la ejecución. El detalle muestra 200 eventos por página y permite consultar los anteriores; no limita lo que se guarda. Las listas de operaciones y carpetas muestran las 200 más recientes. «Sin cierre registrado» no significa necesariamente que una operación siga ejecutándose.
+Desde 0.3.0, **Registro** permite consultar operaciones y carpetas trabajadas, con fecha local, modo, cantidades enviadas/conservadas, errores y última actividad. El contador se guarda durante la ejecución. El detalle muestra 200 eventos por página y permite consultar los anteriores; no limita lo que se guarda. Las listas de operaciones y carpetas muestran las 200 más recientes. «Sin cierre registrado» no significa necesariamente que una operación siga ejecutándose.
 
 **Configuración** (engranaje o `⌘,`) permite cambiar estos valores iniciales:
 
